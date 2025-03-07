@@ -10,10 +10,10 @@ resources:
 
 variables:
   # Container registry service connection established during pipeline creation
-  dockerRegistryServiceConnection: ''
-  imageRepository: 'nginx'
-  containerRegistry: 'acrrepo.azurecr.io'
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  dockerRegistryServiceConnection: '' # Service connection for Docker Registry in Azure DevOps
+  imageRepository: 'nginx' # Name of the image repository
+  containerRegistry: 'acrrepo.azurecr.io' # ACR URL
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile' # Path to the Dockerfile
   tag: 'v$(Build.BuildId)'
 
   # Agent VM image name
@@ -28,7 +28,7 @@ stages:
     pool:
       vmImage: $(vmImageName)
     steps:
-    - task: Docker@2
+    - task: Docker@2 
       displayName: Build and push an image to container registry
       inputs:
         command: buildAndPush
@@ -37,3 +37,56 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+- stage: UpdateTag 
+  displayName: Update the tag in YAML Manifest
+  jobs:
+  - job: UpdateTag
+    displayName: UpdateTag
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Bash@3
+      env:
+        TAG: $(tag)  # Set the TAG environment variable to the value of the tag
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo $TAG
+          cd nginx-deployment
+          echo "Update the image tag in the deployment manifest"
+          sed -i "s|image: webacr.azurecr.io/nginx:.*|image: webacr.azurecr.io/nginx:$TAG|" deploy-nginx.yaml
+    - task: PublishPipelineArtifact@1 # Publish the modified file as an artifact
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)' 
+        artifact: 'modifiedFile'
+        publishLocation: 'pipeline'
+- stage: PushGITRepo
+  displayName: Push to GIT Repo
+  jobs:
+  - job: Push
+    displayName: Push
+    steps:
+     - task: DownloadPipelineArtifact@2
+       inputs:
+         artifact: 'modifiedFile' # Must match publish artifact name
+         targetPath: '$(System.DefaultWorkingDirectory)'  # Download the artifact to the agent's working directory
+     - task: Bash@3
+       env:
+         SYSTEM_ACCESSTOKEN: $(System.AccessToken) # Set the inbuild SYSTEM_ACCESSTOKEN environment variable to the value of the system access token to push the code to the repository
+       inputs:
+        targetType: 'inline'
+        script: |
+          ls -laR $(System.DefaultWorkingDirectory)
+          git clone https://user:$SYSTEM_ACCESSTOKEN@dev.azure.com/my-org/_git/my-repo nginx 
+          echo "Change dir to nginx"
+          cd nginx 
+          git config --global user.email "youremail@gmail.com" # Set the email address for the git user
+          git config --global user.name "user name"   
+          cp -r $(System.DefaultWorkingDirectory)/nginx-deployment/deploy-nginx.yaml nginx-deployment/ # Copy the modified file to the cloned repository
+          echo "Add the file to the repository"
+          git add nginx-deployment/deploy-nginx.yaml
+          git status
+          echo "Commit the changes"
+          git commit -m "Updated image $TAG"
+          git push origin main
+          echo "Pushed the code successfully"
