@@ -93,5 +93,4 @@ stages:
           git status
           echo "Commit the changes"
           git commit -m "Updated image $TAG"
-          git push origin main
-          echo "Pushed the code successfully"
+          git push origin main && echo "Pushed the code successfully" || (echo "Failed to push the code." && exit 1)
