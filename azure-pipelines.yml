@@ -3,7 +3,12 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 trigger:
-- main
+  branches:
+    include:
+    - main # Trigger the pipeline on commits to the main branch
+  paths:
+    exclude:
+    - nginx-deployment/* # Exclude the deployment manifest directory from triggering the pipeline
 
 resources:
 - repo: self
