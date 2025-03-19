@@ -6,8 +6,6 @@ This repository contains a sample setup for deploying an Nginx container in a Ku
 
 - [Prerequisites](#prerequisites)
 - [Setup Instructions](#setup-instructions)
-  - [Azure Pipeline Setup](#azure-pipeline-setup)
-  - [Argo CD Setup](#argo-cd-setup)
 - [Deployment Process](#deployment-process)
 
 ## Prerequisites
