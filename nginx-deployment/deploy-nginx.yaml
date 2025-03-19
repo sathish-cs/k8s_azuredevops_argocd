@@ -21,4 +21,6 @@ spec:
       - image: acrrepo.azurecr.io/nginx:v523341 # Update the repository with the image name and tag
         name: nginx
         resources: {}
+      imagePullSecrets:
+      - name: nginx-secret  # Update the secret name
 status: {}
